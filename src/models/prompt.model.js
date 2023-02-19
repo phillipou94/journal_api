@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { toJSON } = require('./plugins');
+const { toJSON, paginate } = require('./plugins');
 
 const promptSchema = mongoose.Schema(
   {
@@ -21,6 +21,7 @@ const promptSchema = mongoose.Schema(
 
 // add plugin that converts mongoose to json
 promptSchema.plugin(toJSON);
+promptSchema.plugin(paginate);
 
 /**
  * @typedef Prompt
