@@ -2,6 +2,7 @@ const passport = require('passport');
 const httpStatus = require('http-status');
 const ApiError = require('../utils/ApiError');
 const { roleRights } = require('../config/roles');
+const { authService } = require('../services');
 
 const verifyCallback = (req, resolve, reject, requiredRights) => async (err, user, info) => {
   if (err || info || !user) {
@@ -20,12 +21,26 @@ const verifyCallback = (req, resolve, reject, requiredRights) => async (err, use
   resolve();
 };
 
-const auth = (...requiredRights) => async (req, res, next) => {
-  return new Promise((resolve, reject) => {
-    passport.authenticate('jwt', { session: false }, verifyCallback(req, resolve, reject, requiredRights))(req, res, next);
-  })
+const auth =
+  (...requiredRights) =>
+  async (req, res, next) => {
+    return new Promise((resolve, reject) => {
+      passport.authenticate('jwt', { session: false }, verifyCallback(req, resolve, reject, requiredRights))(req, res, next);
+    })
+      .then(() => next())
+      .catch((err) => next(err));
+  };
+
+const authenticateUser = () => async (req, res, next) => {
+  const refreshToken = req.headers.user_refresh_token;
+  const userId = req.body.user;
+  return authService
+    .verifyUserTokenAndId(refreshToken, userId)
     .then(() => next())
     .catch((err) => next(err));
 };
 
-module.exports = auth;
+module.exports = {
+  auth,
+  authenticateUser,
+};

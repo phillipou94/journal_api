@@ -1,9 +1,10 @@
 const express = require('express');
 const promptController = require('../../controllers/prompt.controller');
+const { authenticateUser } = require('../../middlewares/auth');
 
 const router = express.Router();
 
-router.post('/', promptController.createPrompt);
+router.route('/').post(authenticateUser(), promptController.createPrompt);
 router.route('/:userId').get(promptController.getPromptsForUser);
 
 module.exports = router;

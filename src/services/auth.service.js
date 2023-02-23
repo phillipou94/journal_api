@@ -90,10 +90,31 @@ const verifyEmail = async (verifyEmailToken) => {
   }
 };
 
+/**
+ * Returns user from token
+ * @param {string} refreshToken
+ * @returns {Promise<User>}
+ */
+const verifyUserTokenAndId = async (refreshToken, userId) => {
+  try {
+    const refreshTokenDoc = await tokenService.verifyToken(refreshToken, tokenTypes.REFRESH);
+    const user = await userService.getUserById(refreshTokenDoc.user);
+    if (!user) {
+      throw new Error();
+    }
+    if (user.id !== userId) {
+      throw new ApiError(httpStatus.UNAUTHORIZED);
+    }
+  } catch (error) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'You do not have permission for this action');
+  }
+};
+
 module.exports = {
   loginUserWithEmailAndPassword,
   logout,
   refreshAuth,
   resetPassword,
   verifyEmail,
+  verifyUserTokenAndId,
 };
