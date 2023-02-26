@@ -5,7 +5,7 @@ const { authenticateUser } = require('../../middlewares/auth');
 const router = express.Router();
 
 router.route('/').post(authenticateUser(), promptController.createPrompt);
-router.route('/:userId').get(promptController.getPromptsForUser);
+router.route('/').get(authenticateUser(), promptController.getPromptsForUser);
 
 module.exports = router;
 

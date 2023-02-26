@@ -1,22 +1,20 @@
 const mongoose = require('mongoose');
 const { toJSON, paginate } = require('./plugins');
 
-const promptSchema = mongoose.Schema(
+const journalSchema = mongoose.Schema(
   {
-    question: {
-      type: String,
-      required: true,
-      index: true,
-    },
     user: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
     },
-    journal: {
-      type: mongoose.SchemaTypes.ObjectId,
-      ref: 'Journal',
+    name: {
+      type: String,
       required: true,
+    },
+    source: {
+      type: String,
     },
   },
   {
@@ -25,12 +23,12 @@ const promptSchema = mongoose.Schema(
 );
 
 // add plugin that converts mongoose to json
-promptSchema.plugin(toJSON);
-promptSchema.plugin(paginate);
+journalSchema.plugin(toJSON);
+journalSchema.plugin(paginate);
 
 /**
- * @typedef Prompt
+ * @typedef Journal
  */
-const Prompt = mongoose.model('Prompt', promptSchema);
+const Journal = mongoose.model('Journal', journalSchema);
 
-module.exports = Prompt;
+module.exports = Journal;
