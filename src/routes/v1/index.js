@@ -4,6 +4,7 @@ const userRoute = require('./user.route');
 const promptRoute = require('./prompt.route');
 const answerRoute = require('./answer.route');
 const journalRoute = require('./journal.route');
+const notionRoute = require('./notion.route');
 const docsRoute = require('./docs.route');
 const config = require('../../config/config');
 
@@ -29,6 +30,10 @@ const defaultRoutes = [
   {
     path: '/journal',
     route: journalRoute,
+  },
+  {
+    path: '/notion',
+    route: notionRoute,
   },
 ];
 

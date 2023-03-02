@@ -1,3 +1,4 @@
+const httpStatus = require('http-status');
 const { Journal } = require('../models');
 
 /**
@@ -24,11 +25,31 @@ const queryJournals = async (filter, options) => {
 };
 
 const getJournalsForUser = async (user) => {
-  return Journal.find({ user: user });
+  return Journal.find({ user });
+};
+
+/**
+ * Get user by id
+ * @param {ObjectId} id
+ * @returns {Promise<Journal>}
+ */
+const getJournalById = async (id) => {
+  return Journal.findById(id);
+};
+
+const updateJournalById = async (journalId, updateBody) => {
+  const journal = await getJournalById(journalId);
+  if (!journal) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+  Object.assign(journal, updateBody);
+  await journal.save();
+  return journal;
 };
 
 module.exports = {
   createJournal,
   getJournalsForUser,
   queryJournals,
+  updateJournalById,
 };
