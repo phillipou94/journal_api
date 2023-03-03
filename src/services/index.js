@@ -6,3 +6,4 @@ module.exports.promptService = require('./prompt.service');
 module.exports.answerService = require('./answer.service');
 module.exports.journalService = require('./journal.service');
 module.exports.notionService = require('./notion/notion.service');
+module.exports.notionAPIService = require('./notion/notionAPI.service');

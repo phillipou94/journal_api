@@ -1,81 +1,140 @@
 const httpStatus = require('http-status');
-const { Client, APIErrorCode } = require('@notionhq/client');
-const ApiError = require('../../utils/ApiError');
 const catchAsync = require('../../utils/catchAsync');
+const { journalService, notionService, notionAPIService } = require('../../services');
+const { journalSourceTypes } = require('../../config/journals');
+const { answerTypes } = require('../../config/answers');
+const { notionPropertyTypes } = require('../../config/notion');
 
 /**
- * Takes a notoin db id and returns the notion db object
- * @param {String} notionDbId
- * @returns {Promise<QueryResult>}
+ * Takes a notion response and returns a list of prompt bodies
+ * @param {Object} notionBody
+ * @returns {Object}}
  */
-const getNotionDbObject = catchAsync(async (notionDbId) => {
-  try {
-    // let results = [];
-
-    const notionClient = new Client({
-      auth: process.env.NOTION_INTEGRATION_TOKEN,
+const parsePromptsFromNotionResponse = (notionDbItems) => {
+  if (notionDbItems !== undefined || notionDbItems.length > 0) {
+    const prompts = new Set();
+    const defaultNotionPageProperties = ['Tags', 'Created', 'Name'];
+    notionDbItems.forEach((item) => {
+      const properties = Object.getOwnPropertyNames(item.properties);
+      // filter out default notion page properties
+      const customProperties = properties.filter(function (property) {
+        return !defaultNotionPageProperties.includes(property);
+      });
+      customProperties.forEach((customProperty) => prompts.add(customProperty));
     });
 
-    return await notionClient.databases.query({
-      database_id: notionDbId,
+    return prompts;
+  }
+  return [];
+};
+
+const translateNotionPropertyTypeToAnswer = (notionPropertyType) => {
+  console.log(notionPropertyTypes);
+  console.log(notionPropertyType);
+  if (
+    [
+      notionPropertyTypes.SELECT,
+      notionPropertyTypes.MULTI_SELECT,
+      notionPropertyTypes.CHECKBOX,
+      notionPropertyTypes.STATUS,
+    ].includes(notionPropertyType)
+  ) {
+    return answerTypes.CATEGORY;
+  }
+  if ([notionPropertyTypes.NUMBER].includes(notionPropertyType)) {
+    return answerTypes.SCORE;
+  }
+  if ([notionPropertyTypes.RICH_TEXT].includes(notionPropertyType)) {
+    return answerTypes.FREE_RESPONSE;
+  }
+  return answerTypes.NOT_SUPPORTED;
+}
+
+const parseAnswersFromNotionResponse = (notionDbItems, prompts) => {
+  const answers = [];
+  notionDbItems.forEach((item) => {
+    const properties = Object.getOwnPropertyNames(item.properties);
+    // filter out default notion page properties
+    prompts.forEach((prompt) => {
+      const answerObject = item.properties[prompt];
+      const notionAnswerType = answerObject.type;
+      const answer = answerObject[notionAnswerType];
+      const answerBody = {
+        type: translateNotionPropertyTypeToAnswer(notionAnswerType),
+        notion_property_id: answerObject.id,
+        answer_time: item.properties.Created.created_time,
+        prompt,
+      }
+      if (answerBody.type === answerTypes.CATEGORY) {
+        answerBody.category_answer = answer != null ? answer.name : null;
+        answerBody.notion_property_color = answer != null ? answer.color : null;
+      } else if (answerBody.type === answerTypes.SCORE) {
+        answerBody.score_answer = answer != null ? answer.name : null;
+      } else if (answerBody.type === answerTypes.FREE_RESPONSE) {
+        answerBody.free_response_answer = answer != null ? answer.name : null;
+      }
+      answers.push(answerBody);
+      console.log(answers);
     });
 
-    // results = [...results, ...notionResponse.results];
+    /**
+     * properties: {
+        Tags: { id: "!'(w", type: 'multi_select', multi_select: [Array] },
+        'How happy do you feel today?': { id: 'DGt%5C', type: 'select', select: [Object] },
+        'How confident do you feel?': { id: 'vNjf', type: 'select', select: [Object] },
+        'How anxious do you feel?': { id: 'zFjf', type: 'select', select: [Object] },
+        Created: {
+          id: '%7D%25j%7B',
+          type: 'created_time',
+          created_time: '2023-02-24T05:00:00.000Z'
+        },
+        'What else do you feel?': { id: '%7DdGC', type: 'select', select: [Object] },
+        Name: { id: 'title', type: 'title', title: [Array] }
+  },
+     */
+  });
 
-    // // while loop variables
-    // let hasMore = notionResponse.has_more;
-    // let nextCursor = notionResponse.next_cursor;
+};
 
-    // // keep fetching while there are more results
-    // while (hasMore) {
-    //   // eslint-disable-next-line no-await-in-loop
-    //   const response = await notionClient.databases.query({
-    //     database_id: notionDbId,
-    //     start_cursor: nextCursor,
-    //   });
+const createJournalFromNotionDbId = catchAsync(async (req, res) => {
+  const notionDbId = req.body.notion_db_id;
+  const journalId = req.body.journal;
+  const userId = req.body.user;
 
-    //   results = [...results, ...response.results];
-    //   hasMore = response.has_more;
-    //   nextCursor = notionResponse.next_cursor;
-    // }
-  } catch (error) {
-    if (error.code === APIErrorCode.ObjectNotFound) {
-      throw new ApiError(httpStatus.NOT_FOUND, 'Database not found');
-    } else {
-      // Other error handling code
-      throw new ApiError(httpStatus.BAD_REQUEST, error);
+  const notionResponse = await notionAPIService.getNotionDbObject(notionDbId);
+  const { results } = notionResponse;
+  const prompts = parsePromptsFromNotionResponse(results);
+  const answers = parseAnswersFromNotionResponse(results, prompts);
+  // TODO: Create prompts
+  // TODO: Create Answers
+
+
+  const validNotionDB = results !== undefined;
+  if (validNotionDB) {
+    const notionBody = {
+      notion_db_id: notionDbId,
+      journal: journalId,
+    };
+
+    const journalTitle = `NOTION JOURNAL: ${notionDbId}`;
+    const journalBody = {
+      name: journalTitle,
+      source: journalSourceTypes.NOTION,
+      user: userId,
+    };
+    try {
+      const journalServiceResponse = await journalService.createJournal(journalBody);
+      const notionServiceResponse = await notionService.createNotionDb(notionBody);
+
+      res.send({ notionServiceResponse, journalServiceResponse });
+    } catch (error) {
+      res.status(httpStatus.PRECONDITION_FAILED).send(error);
     }
+  } else {
+    res.status(httpStatus.PRECONDITION_FAILED).send('Invalid Notion Db');
   }
 });
 
-// const createJournalFromNotionDb = catchAsync(async (req, res) => {
-//   const notionDbId = req.body.notion_db_id;
-//   const journalId = req.body.journal;
-//   const userId = req.body.user;
-//   const notionResponse = await getNotionDbObject(notionDbId);
-//   const { results } = notionResponse;
-//   const validNotionDB = results !== undefined;
-//   if (validNotionDB) {
-//     const notionBody = {
-//       notion_db_id: notionDbId,
-//       journal: journalId,
-//     };
-//     const journalBody = {
-//       name: 'Test Notion Journal',
-//       source: journalSourceTypes.NOTION,
-//       user: userId,
-//     };
-
-//     try {
-//       const journal = await journalService.createJournal(journalBody);
-//       const result = await notionService.createNotionDb(notionBody);
-//       // TODO: CREATE JOURNAL AND CREATE NOTION DB
-//       res.send(result);
-//     } catch (error) {
-//       res.status(httpStatus.PRECONDITION_FAILED).send();
-//     }
-// });
-
 module.exports = {
-  getNotionDbObject,
+  createJournalFromNotionDbId,
 };
