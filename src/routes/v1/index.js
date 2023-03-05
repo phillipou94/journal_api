@@ -6,6 +6,7 @@ const answerRoute = require('./answer.route');
 const journalRoute = require('./journal.route');
 const notionRoute = require('./notion.route');
 const docsRoute = require('./docs.route');
+const entryRoute = require('./entry.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -34,6 +35,10 @@ const defaultRoutes = [
   {
     path: '/notion',
     route: notionRoute,
+  },
+  {
+    path: '/entry',
+    route: entryRoute,
   },
 ];
 

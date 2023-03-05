@@ -7,3 +7,4 @@ module.exports.answerService = require('./answer.service');
 module.exports.journalService = require('./journal.service');
 module.exports.notionService = require('./notion/notion.service');
 module.exports.notionAPIService = require('./notion/notionAPI.service');
+module.exports.entryService = require('./entry.service');

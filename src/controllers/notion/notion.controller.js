@@ -29,8 +29,6 @@ const parsePromptsFromNotionResponse = (notionDbItems) => {
 };
 
 const translateNotionPropertyTypeToAnswer = (notionPropertyType) => {
-  console.log(notionPropertyTypes);
-  console.log(notionPropertyType);
   if (
     [
       notionPropertyTypes.SELECT,
@@ -65,6 +63,7 @@ const parseAnswersFromNotionResponse = (notionDbItems, prompts) => {
         answer_time: item.properties.Created.created_time,
         prompt,
       }
+
       if (answerBody.type === answerTypes.CATEGORY) {
         answerBody.category_answer = answer != null ? answer.name : null;
         answerBody.notion_property_color = answer != null ? answer.color : null;
@@ -74,9 +73,30 @@ const parseAnswersFromNotionResponse = (notionDbItems, prompts) => {
         answerBody.free_response_answer = answer != null ? answer.name : null;
       }
       answers.push(answerBody);
-      console.log(answers);
+
     });
 
+    // TODO: refactor to JournalEntries (each day is a new entry). Journal Entries have prompts (prompts have ansswers).
+    // Index hash of question. Use notion_property_id if it's a notion doc
+
+    /**  Answers
+     *
+     * {
+          type: 'AnswerType.Category',
+          notion_property_id: 'DGt%5C',
+          answer_time: '2023-02-06T05:00:00.000Z',
+          prompt: 'How happy do you feel today?',
+          category_answer: null
+        },
+        {
+          type: 'AnswerType.Category',
+          notion_property_id: 'vNjf',
+          answer_time: '2023-02-06T05:00:00.000Z',
+          prompt: 'How confident do you feel?',
+          category_answer: null
+        },
+
+     */
     /**
      * properties: {
         Tags: { id: "!'(w", type: 'multi_select', multi_select: [Array] },
